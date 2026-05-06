@@ -1,26 +1,184 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* ── Brand font ───────────────────────────────────────────────────────────── */
 body {
-  background: var(--background);
+  font-family: var(--font-space-grotesk), 'Space Grotesk', system-ui, sans-serif;
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   THEMES  — CSS custom properties per data-theme value on <html>
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* Forest (default — deep green + teal + amber) */
+:root,
+[data-theme="forest"] {
+  --background:   #f8fafc;
+  --foreground:   #0f1a14;
+  --card-bg:      #ffffff;
+  --card-border:  #e2e8f0;
+  --input-bg:     #ffffff;
+  --input-border: #e2e8f0;
+  --text-primary:   #0f172a;
+  --text-secondary: #475569;
+  --text-muted:     #94a3b8;
+
+  --sidebar-bg:          #1b4332;
+  --sidebar-border:      #25503c;
+  --sidebar-active:      #2d6147;
+  --sidebar-hover:       #245540;
+  --sidebar-text:        #86c5a3;
+  --sidebar-text-active: #ffffff;
+
+  --color-primary:       #1db89d;
+  --color-primary-dark:  #169c87;
+  --color-primary-light: #e6f7f4;
+  --color-accent:        #f5a623;
+}
+
+/* Ocean (teal + amber) */
+[data-theme="ocean"] {
+  --background:   #f0f9fb;
+  --foreground:   #0c2d36;
+  --card-bg:      #ffffff;
+  --card-border:  #d1eef5;
+  --input-bg:     #ffffff;
+  --input-border: #c8e8f0;
+  --text-primary:   #0c2d36;
+  --text-secondary: #3a7a8c;
+  --text-muted:     #7abccc;
+
+  --sidebar-bg:          #0c3b50;
+  --sidebar-border:      #155068;
+  --sidebar-active:      #1e6b80;
+  --sidebar-hover:       #175e72;
+  --sidebar-text:        #7dc5d8;
+  --sidebar-text-active: #ffffff;
+
+  --color-primary:       #16b3c6;
+  --color-primary-dark:  #0e96a8;
+  --color-primary-light: #e0f7fa;
+  --color-accent:        #f5a623;
+}
+
+/* Earth (olive green + golden yellow) */
+[data-theme="earth"] {
+  --background:   #fafaf7;
+  --foreground:   #1a2010;
+  --card-bg:      #ffffff;
+  --card-border:  #d8e8c8;
+  --input-bg:     #ffffff;
+  --input-border: #cce0ba;
+  --text-primary:   #1a2010;
+  --text-secondary: #4a6830;
+  --text-muted:     #88a870;
+
+  --sidebar-bg:          #2d4a22;
+  --sidebar-border:      #3d6030;
+  --sidebar-active:      #4d763c;
+  --sidebar-hover:       #426830;
+  --sidebar-text:        #a3c98a;
+  --sidebar-text-active: #ffffff;
+
+  --color-primary:       #5a9e46;
+  --color-primary-dark:  #4a8838;
+  --color-primary-light: #eef6e9;
+  --color-accent:        #f5c518;
+}
+
+/* Dark Mode */
+[data-theme="dark"] {
+  --background:   #0f172a;
+  --foreground:   #e2e8f0;
+  --card-bg:      #1e293b;
+  --card-border:  #334155;
+  --input-bg:     #1e293b;
+  --input-border: #334155;
+  --text-primary:   #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted:     #64748b;
+
+  --sidebar-bg:          #020617;
+  --sidebar-border:      #1e293b;
+  --sidebar-active:      #1e3a5f;
+  --sidebar-hover:       #0f172a;
+  --sidebar-text:        #64748b;
+  --sidebar-text-active: #f1f5f9;
+
+  --color-primary:       #38bdf8;
+  --color-primary-dark:  #0ea5e9;
+  --color-primary-light: #0c2233;
+  --color-accent:        #f59e0b;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   DARK MODE CONTENT OVERRIDES
+   Targets hardcoded Tailwind classes — no component edits needed.
+   [data-theme="dark"] .bg-white has specificity (0,1,1) vs .bg-white (0,0,1)
+   so it wins without !important.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+[data-theme="dark"] body       { background-color: #0f172a; color: #e2e8f0; }
+
+/* Backgrounds */
+[data-theme="dark"] .bg-white          { background-color: #1e293b; }
+[data-theme="dark"] .bg-slate-50       { background-color: #0f172a; }
+[data-theme="dark"] .bg-slate-100      { background-color: #1e293b; }
+[data-theme="dark"] .bg-slate-200      { background-color: #334155; }
+[data-theme="dark"] .bg-blue-50        { background-color: #0c1a2e; }
+[data-theme="dark"] .bg-blue-100       { background-color: #0c1a2e; }
+[data-theme="dark"] .bg-green-50       { background-color: #0a1f14; }
+[data-theme="dark"] .bg-green-100      { background-color: #0a1f14; }
+[data-theme="dark"] .bg-red-50         { background-color: #1f0a0a; }
+[data-theme="dark"] .bg-amber-50       { background-color: #1f1500; }
+[data-theme="dark"] .bg-purple-50      { background-color: #150a1f; }
+[data-theme="dark"] .bg-orange-50      { background-color: #1f0e00; }
+[data-theme="dark"] .bg-yellow-50      { background-color: #1a1500; }
+[data-theme="dark"] .bg-emerald-50     { background-color: #0a1f12; }
+[data-theme="dark"] .bg-indigo-50      { background-color: #0c0f2e; }
+
+/* Borders */
+[data-theme="dark"] .border-slate-100  { border-color: #1e293b; }
+[data-theme="dark"] .border-slate-200  { border-color: #334155; }
+[data-theme="dark"] .border-slate-300  { border-color: #475569; }
+[data-theme="dark"] .border-blue-200   { border-color: #1e3a5f; }
+[data-theme="dark"] .border-amber-200  { border-color: #3d2a00; }
+[data-theme="dark"] .border-green-200  { border-color: #1a3d20; }
+[data-theme="dark"] .border-red-200    { border-color: #3d1a1a; }
+
+/* Text */
+[data-theme="dark"] .text-slate-900    { color: #f1f5f9; }
+[data-theme="dark"] .text-slate-800    { color: #e2e8f0; }
+[data-theme="dark"] .text-slate-700    { color: #cbd5e1; }
+[data-theme="dark"] .text-slate-600    { color: #94a3b8; }
+[data-theme="dark"] .text-slate-500    { color: #64748b; }
+[data-theme="dark"] .text-slate-400    { color: #475569; }
+[data-theme="dark"] .text-slate-300    { color: #334155; }
+
+/* Hover backgrounds */
+[data-theme="dark"] .hover\:bg-slate-50:hover   { background-color: #1e293b; }
+[data-theme="dark"] .hover\:bg-slate-100:hover  { background-color: #334155; }
+[data-theme="dark"] .hover\:bg-blue-50:hover    { background-color: #0c1a2e; }
+[data-theme="dark"] .hover\:bg-red-50:hover     { background-color: #1f0a0a; }
+
+/* Divide / separator lines */
+[data-theme="dark"] .divide-slate-100 > * + * { border-color: #1e293b; }
+[data-theme="dark"] .divide-slate-200 > * + * { border-color: #334155; }
+[data-theme="dark"] .divide-y > * + *         { border-color: #1e293b; }
+
+/* Form inputs */
+[data-theme="dark"] input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),
+[data-theme="dark"] textarea,
+[data-theme="dark"] select {
+  background-color: #1e293b;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder { color: #475569; }
+
+/* ── Kanban scrollbar ─────────────────────────────────────────────────────── */
+.kanban-scroll::-webkit-scrollbar        { height: 6px; }
+.kanban-scroll::-webkit-scrollbar-track  { background: var(--card-border, #f1f5f9); }
+.kanban-scroll::-webkit-scrollbar-thumb  { background: var(--text-muted, #cbd5e1); border-radius: 3px; }
