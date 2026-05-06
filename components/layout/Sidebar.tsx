@@ -11,6 +11,7 @@ import {
   Menu, X,
 } from 'lucide-react'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
+// NotificationBell reads from NotificationProvider context — no userId prop needed
 
 const navItems = [
   { href: '/dashboard',          label: 'Dashboard',     icon: LayoutDashboard,  roles: null },
@@ -88,7 +89,7 @@ export function Sidebar({ userName, userRole, userId }: SidebarProps) {
           </div>
         </div>
 
-        <NotificationBell userId={userId} />
+        <NotificationBell />
       </div>
 
       {/* ── Mobile backdrop ─────────────────────────────────────────── */}
@@ -186,7 +187,7 @@ export function Sidebar({ userName, userRole, userId }: SidebarProps) {
             </div>
             {/* Bell only in desktop sidebar */}
             <div className="hidden lg:block">
-              <NotificationBell userId={userId} />
+              <NotificationBell />
             </div>
           </div>
 

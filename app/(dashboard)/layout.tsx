@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { ThemeProvider } from '@/components/ThemeProvider'
+import { NotificationProvider } from '@/components/notifications/NotificationContext'
 import { Toaster } from 'sonner'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -21,6 +22,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <ThemeProvider>
+      <NotificationProvider userId={user.id}>
       <div className="flex h-screen overflow-hidden" style={{ background: 'var(--background)' }}>
         <Sidebar userName={userName} userRole={userRole} userId={user.id} />
         <main className="flex-1 overflow-y-auto">
@@ -32,6 +34,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </main>
         <Toaster position="top-right" richColors />
       </div>
+      </NotificationProvider>
     </ThemeProvider>
   )
 }

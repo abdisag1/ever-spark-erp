@@ -5,82 +5,30 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Bell, X, CheckCheck, ClipboardList, Clock, AlertTriangle } from 'lucide-react'
 import { formatDateTime } from '@/lib/utils'
 import { cn } from '@/lib/utils'
-import { createClient } from '@/lib/supabase/client'
+import { useNotifications } from './NotificationContext'
 import type { Notification } from '@/types'
 
 const TYPE_CONFIG: Record<string, { icon: React.ElementType; iconClass: string; bg: string }> = {
-  task_assigned: { icon: ClipboardList, iconClass: 'text-blue-500',   bg: 'bg-blue-50' },
-  task_due:      { icon: Clock,         iconClass: 'text-amber-500',   bg: 'bg-amber-50' },
-  task_overdue:  { icon: AlertTriangle, iconClass: 'text-red-500',     bg: 'bg-red-50' },
+  task_assigned: { icon: ClipboardList, iconClass: 'text-blue-500',  bg: 'bg-blue-50' },
+  task_due:      { icon: Clock,         iconClass: 'text-amber-500', bg: 'bg-amber-50' },
+  task_overdue:  { icon: AlertTriangle, iconClass: 'text-red-500',   bg: 'bg-red-50' },
 }
 
-interface NotificationBellProps {
-  userId: string
-}
-
-export function NotificationBell({ userId }: NotificationBellProps) {
+export function NotificationBell() {
+  const { notifications, unreadCount, markRead, markAllRead, loading } = useNotifications()
   const [open, setOpen] = useState(false)
-  const [notifications, setNotifications] = useState<Notification[]>([])
-  const [loading, setLoading] = useState(true)
   const panelRef = useRef<HTMLDivElement>(null)
-
-  const unreadCount = notifications.filter((n) => !n.read).length
-
-  // Fetch notifications
-  async function fetchNotifications() {
-    const res = await fetch('/api/notifications')
-    if (res.ok) setNotifications(await res.json())
-    setLoading(false)
-  }
-
-  // Check for deadline notifications on mount
-  async function checkDeadlines() {
-    await fetch('/api/notifications/check-deadlines', { method: 'POST' })
-    await fetchNotifications()
-  }
-
-  useEffect(() => {
-    checkDeadlines()
-  }, [])
-
-  // Supabase Realtime — listen for new notifications
-  useEffect(() => {
-    const supabase = createClient()
-    const channel = supabase
-      .channel(`notifications:${userId}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'notifications',
-        filter: `user_id=eq.${userId}`,
-      }, (payload) => {
-        setNotifications((prev) => [payload.new as Notification, ...prev])
-      })
-      .subscribe()
-
-    return () => { supabase.removeChannel(channel) }
-  }, [userId])
 
   // Close when clicking outside
   useEffect(() => {
-    function onClick(e: MouseEvent) {
+    function onDown(e: MouseEvent) {
       if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
         setOpen(false)
       }
     }
-    if (open) document.addEventListener('mousedown', onClick)
-    return () => document.removeEventListener('mousedown', onClick)
+    if (open) document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
   }, [open])
-
-  async function markRead(id: string) {
-    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n))
-    await fetch(`/api/notifications/${id}`, { method: 'PATCH' })
-  }
-
-  async function markAllRead() {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
-    await fetch('/api/notifications/read-all', { method: 'PATCH' })
-  }
 
   return (
     <div className="relative" ref={panelRef}>
@@ -137,11 +85,9 @@ export function NotificationBell({ userId }: NotificationBellProps) {
               </div>
             </div>
 
-            {/* Notification list */}
+            {/* List */}
             <div className="overflow-y-auto max-h-[400px]">
-              {loading && (
-                <p className="text-xs text-slate-400 text-center py-8">Loading…</p>
-              )}
+              {loading && <p className="text-xs text-slate-400 text-center py-8">Loading…</p>}
               {!loading && notifications.length === 0 && (
                 <div className="text-center py-10">
                   <Bell className="w-8 h-8 text-slate-200 mx-auto mb-2" />
@@ -168,9 +114,7 @@ export function NotificationBell({ userId }: NotificationBellProps) {
                         <p className={cn('text-xs font-semibold truncate', n.read ? 'text-slate-600' : 'text-slate-900')}>
                           {n.title}
                         </p>
-                        {!n.read && (
-                          <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
-                        )}
+                        {!n.read && <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />}
                       </div>
                       <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{n.message}</p>
                       <p className="text-xs text-slate-400 mt-1">{formatDateTime(n.created_at)}</p>
