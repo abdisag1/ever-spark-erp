@@ -138,6 +138,35 @@ export interface Notification {
   created_at: string
 }
 
+export type LeaveType = 'annual' | 'sick' | 'emergency' | 'maternity' | 'paternity' | 'unpaid'
+export type LeaveStatus = 'pending' | 'approved' | 'rejected'
+
+export interface LeaveRequest {
+  id: string
+  employee_id: string
+  leave_type: LeaveType
+  start_date: string
+  end_date: string
+  days_requested: number
+  reason: string | null
+  status: LeaveStatus
+  approved_by: string | null
+  admin_note: string | null
+  created_at: string
+  updated_at: string
+  employee?: Profile
+  approver?: Profile
+}
+
+export interface LeaveBalance {
+  id: string
+  employee_id: string
+  year: number
+  total_days: number
+  days_taken: number
+  created_at?: string
+}
+
 export type SMSStatus = 'pending' | 'sent' | 'delivered' | 'failed'
 
 export interface SMSLog {

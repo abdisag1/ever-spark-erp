@@ -34,6 +34,20 @@ export function getInitials(name: string): string {
     .toUpperCase()
 }
 
+/** Count working days (Mon–Fri) between two date strings, inclusive */
+export function countWorkingDays(startDate: string, endDate: string): number {
+  const start = new Date(startDate + 'T00:00:00')
+  const end   = new Date(endDate   + 'T00:00:00')
+  let count = 0
+  const cur = new Date(start)
+  while (cur <= end) {
+    const d = cur.getDay()
+    if (d !== 0 && d !== 6) count++
+    cur.setDate(cur.getDate() + 1)
+  }
+  return count
+}
+
 export function getWeekStart(date: Date = new Date()): string {
   const d = new Date(date)
   const day = d.getDay()
