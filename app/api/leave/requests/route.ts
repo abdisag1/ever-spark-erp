@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { leave_type, start_date, end_date, reason } = await request.json()
+  const { leave_type, start_date, end_date, reason, attachment_url, attachment_name } = await request.json()
   if (!leave_type || !start_date || !end_date) {
     return NextResponse.json({ error: 'leave_type, start_date and end_date are required' }, { status: 400 })
   }
@@ -52,7 +52,16 @@ export async function POST(request: NextRequest) {
 
   const { data, error } = await supabase
     .from('leave_requests')
-    .insert({ employee_id: user.id, leave_type, start_date, end_date, days_requested, reason: reason || null })
+    .insert({
+      employee_id: user.id,
+      leave_type,
+      start_date,
+      end_date,
+      days_requested,
+      reason: reason || null,
+      attachment_url: attachment_url || null,
+      attachment_name: attachment_name || null,
+    })
     .select(SELECT)
     .single()
 

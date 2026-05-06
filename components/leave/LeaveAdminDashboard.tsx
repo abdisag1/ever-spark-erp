@@ -3,39 +3,39 @@
 import { useState, useMemo } from 'react'
 import { format } from 'date-fns'
 import { Avatar } from '@/components/ui/avatar'
+import { Modal } from '@/components/ui/modal'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import {
   CheckCircle2, XCircle, Clock, AlertTriangle, Users,
   Calendar, TrendingUp, ChevronDown, ChevronUp,
+  Paperclip, ExternalLink, History,
 } from 'lucide-react'
 import type { LeaveRequest, LeaveBalance, Profile } from '@/types'
 
 const LEAVE_COLOR: Record<string, string> = {
-  annual: 'bg-blue-100 text-blue-700',
-  sick: 'bg-red-100 text-red-700',
-  emergency: 'bg-orange-100 text-orange-700',
-  maternity: 'bg-pink-100 text-pink-700',
-  paternity: 'bg-purple-100 text-purple-700',
-  unpaid: 'bg-slate-100 text-slate-600',
+  annual: 'bg-blue-100 text-blue-700', sick: 'bg-red-100 text-red-700',
+  emergency: 'bg-orange-100 text-orange-700', maternity: 'bg-pink-100 text-pink-700',
+  paternity: 'bg-purple-100 text-purple-700', unpaid: 'bg-slate-100 text-slate-600',
 }
-
+const STATUS_STYLE: Record<string, string> = {
+  approved: 'bg-green-100 text-green-700',
+  rejected: 'bg-red-100 text-red-700',
+  pending:  'bg-amber-100 text-amber-700',
+}
 const TOTAL_WORKING_DAYS = 260
 
-interface ConflictEmployee { name: string; start_date: string; end_date: string }
+interface ConflictEmp { name: string; start_date: string; end_date: string }
 
-function ConflictWarning({ conflicts }: { conflicts: ConflictEmployee[] }) {
-  if (!conflicts.length) return null
+function AttachmentLink({ url, name }: { url: string | null; name: string | null }) {
+  if (!url) return null
   return (
-    <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2">
-      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-      <div className="text-xs text-amber-800">
-        <strong>Conflict:</strong>{' '}
-        {conflicts.map((c, i) => (
-          <span key={i}>{c.name} is off {format(new Date(c.start_date), 'MMM d')}–{format(new Date(c.end_date), 'MMM d')}{i < conflicts.length - 1 ? ', ' : ''}</span>
-        ))}
-      </div>
-    </div>
+    <a href={url} target="_blank" rel="noopener noreferrer"
+      className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium transition-colors mt-1">
+      <Paperclip className="w-3 h-3" />
+      {name ?? 'View form'}
+      <ExternalLink className="w-3 h-3" />
+    </a>
   )
 }
 
@@ -45,17 +45,17 @@ interface AdminProps {
   employees: Profile[]
 }
 
-export function LeaveAdminDashboard({ requests: initialRequests, balances: initialBalances, employees }: AdminProps) {
-  const [requests, setRequests] = useState<LeaveRequest[]>(initialRequests)
-  const [balances, setBalances] = useState<LeaveBalance[]>(initialBalances)
-  const [adminNotes, setAdminNotes] = useState<Record<string, string>>({})
-  const [processing, setProcessing] = useState<string | null>(null)
-  const [conflicts, setConflicts] = useState<Record<string, ConflictEmployee[]>>({})
+export function LeaveAdminDashboard({ requests: init, balances: initBal, employees }: AdminProps) {
+  const [requests,    setRequests]    = useState<LeaveRequest[]>(init)
+  const [balances,    setBalances]    = useState<LeaveBalance[]>(initBal)
+  const [adminNotes,  setAdminNotes]  = useState<Record<string, string>>({})
+  const [processing,  setProcessing]  = useState<string | null>(null)
+  const [conflicts,   setConflicts]   = useState<Record<string, ConflictEmp[]>>({})
   const [expandedReq, setExpandedReq] = useState<string | null>(null)
+  const [historyEmployee, setHistoryEmployee] = useState<Profile | null>(null)
 
   const pending  = requests.filter((r) => r.status === 'pending')
-  const approved = requests.filter((r) => r.status === 'approved')
-  const year = new Date().getFullYear()
+  const year     = new Date().getFullYear()
 
   // Check conflicts for a request
   async function checkConflicts(req: LeaveRequest) {
@@ -67,10 +67,7 @@ export function LeaveAdminDashboard({ requests: initialRequests, balances: initi
     })
     if (res.ok) {
       const data: LeaveRequest[] = await res.json()
-      setConflicts((prev) => ({
-        ...prev,
-        [req.id]: data.map((c) => ({ name: c.employee?.name ?? '?', start_date: c.start_date, end_date: c.end_date })),
-      }))
+      setConflicts((p) => ({ ...p, [req.id]: data.map((c) => ({ name: c.employee?.name ?? '?', start_date: c.start_date, end_date: c.end_date })) }))
     }
   }
 
@@ -83,7 +80,7 @@ export function LeaveAdminDashboard({ requests: initialRequests, balances: initi
     })
     if (res.ok) {
       const updated: LeaveRequest = await res.json()
-      setRequests((prev) => prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)))
+      setRequests((prev) => prev.map((r) => r.id === updated.id ? { ...r, ...updated } : r))
       if (status === 'approved') {
         setBalances((prev) => prev.map((b) =>
           b.employee_id === req.employee_id && b.year === year
@@ -106,21 +103,25 @@ export function LeaveAdminDashboard({ requests: initialRequests, balances: initi
   const stats = useMemo(() => ({
     totalEmployees: employees.length,
     pending: pending.length,
-    approvedThisYear: approved.filter((r) => r.start_date.startsWith(String(year))).length,
+    approvedThisYear: requests.filter((r) => r.status === 'approved' && r.start_date.startsWith(String(year))).length,
     avgDaysTaken: employees.length > 0
       ? Math.round(balances.filter((b) => b.year === year).reduce((s, b) => s + b.days_taken, 0) / employees.length)
       : 0,
-  }), [employees, pending, approved, balances, year])
+  }), [employees, pending, requests, balances, year])
+
+  const historyRequests = historyEmployee
+    ? requests.filter((r) => r.employee_id === historyEmployee.id)
+    : []
 
   return (
     <div className="space-y-6">
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: 'Total Employees', value: stats.totalEmployees, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
-          { label: 'Pending Requests', value: stats.pending, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50' },
-          { label: 'Approved (this year)', value: stats.approvedThisYear, icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50' },
-          { label: 'Avg Days Taken', value: stats.avgDaysTaken, icon: Calendar, color: 'text-purple-600', bg: 'bg-purple-50' },
+          { label: 'Total Employees',      value: stats.totalEmployees,   icon: Users,        color: 'text-blue-600',   bg: 'bg-blue-50' },
+          { label: 'Pending Requests',     value: stats.pending,          icon: Clock,        color: 'text-amber-600',  bg: 'bg-amber-50' },
+          { label: 'Approved (this year)', value: stats.approvedThisYear, icon: CheckCircle2, color: 'text-green-600',  bg: 'bg-green-50' },
+          { label: 'Avg Days Taken',       value: stats.avgDaysTaken,     icon: Calendar,     color: 'text-purple-600', bg: 'bg-purple-50' },
         ].map((s) => (
           <div key={s.label} className="bg-white rounded-xl border border-slate-200 p-4">
             <div className="flex items-center justify-between mb-2">
@@ -145,7 +146,8 @@ export function LeaveAdminDashboard({ requests: initialRequests, balances: initi
             {pending.map((req) => {
               const bal = getBalance(req.employee_id)
               const remaining = bal.total_days - bal.days_taken
-              const expanded = expandedReq === req.id
+              const expanded  = expandedReq === req.id
+              const reqConflicts = conflicts[req.id] ?? []
               return (
                 <div key={req.id} className="p-4">
                   <div className="flex flex-wrap items-start gap-3">
@@ -153,21 +155,28 @@ export function LeaveAdminDashboard({ requests: initialRequests, balances: initi
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="text-sm font-semibold text-slate-900">{req.employee?.name}</p>
-                        <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', LEAVE_COLOR[req.leave_type])}>
-                          {req.leave_type}
-                        </span>
+                        <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', LEAVE_COLOR[req.leave_type])}>{req.leave_type}</span>
                         <span className="text-xs text-slate-500">
                           {format(new Date(req.start_date), 'MMM d')} – {format(new Date(req.end_date), 'MMM d, yyyy')}
-                          {' '}· {req.days_requested} day{req.days_requested !== 1 ? 's' : ''}
+                          {' · '}{req.days_requested} day{req.days_requested !== 1 ? 's' : ''}
                         </span>
                       </div>
                       {req.reason && <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{req.reason}</p>}
-                      <p className="text-xs text-slate-400 mt-0.5">
-                        Balance: {remaining} of {bal.total_days} days remaining
-                      </p>
+                      <p className="text-xs text-slate-400 mt-0.5">Balance: {remaining} of {bal.total_days} days remaining</p>
+                      <AttachmentLink url={req.attachment_url} name={req.attachment_name} />
 
                       {/* Conflict warning */}
-                      {conflicts[req.id] && <ConflictWarning conflicts={conflicts[req.id]} />}
+                      {reqConflicts.length > 0 && (
+                        <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2">
+                          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                          <p className="text-xs text-amber-800">
+                            <strong>Conflict:</strong>{' '}
+                            {reqConflicts.map((c, i) => (
+                              <span key={i}>{c.name} off {format(new Date(c.start_date), 'MMM d')}–{format(new Date(c.end_date), 'MMM d')}{i < reqConflicts.length - 1 ? ', ' : ''}</span>
+                            ))}
+                          </p>
+                        </div>
+                      )}
                     </div>
 
                     {/* Actions */}
@@ -175,7 +184,6 @@ export function LeaveAdminDashboard({ requests: initialRequests, balances: initi
                       <button
                         onClick={() => { setExpandedReq(expanded ? null : req.id); checkConflicts(req) }}
                         className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors"
-                        title="Add note"
                       >
                         {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </button>
@@ -197,7 +205,6 @@ export function LeaveAdminDashboard({ requests: initialRequests, balances: initi
                     </div>
                   </div>
 
-                  {/* Expanded: admin note */}
                   {expanded && (
                     <div className="mt-3 pl-9">
                       <label className="block text-xs font-medium text-slate-600 mb-1">Admin note (optional)</label>
@@ -217,7 +224,7 @@ export function LeaveAdminDashboard({ requests: initialRequests, balances: initi
         </div>
       )}
 
-      {/* Employee Summary */}
+      {/* Employee Summary Table */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
           <TrendingUp className="w-4 h-4 text-slate-400" />
@@ -227,7 +234,7 @@ export function LeaveAdminDashboard({ requests: initialRequests, balances: initi
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50">
-                {['Employee', 'Role', 'Annual Balance', 'Days Taken', 'Remaining', 'Efficiency', 'Status'].map((h) => (
+                {['Employee', 'Role', 'Annual', 'Taken', 'Remaining', 'Efficiency', 'Forms', 'History'].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -235,9 +242,10 @@ export function LeaveAdminDashboard({ requests: initialRequests, balances: initi
             <tbody className="divide-y divide-slate-100">
               {employees.map((emp) => {
                 const bal = getBalance(emp.id)
-                const remaining = bal.total_days - bal.days_taken
+                const remaining  = bal.total_days - bal.days_taken
                 const efficiency = Math.round(((TOTAL_WORKING_DAYS - bal.days_taken) / TOTAL_WORKING_DAYS) * 100)
-                const hasPending = pending.some((r) => r.employee_id === emp.id)
+                const empRequests = requests.filter((r) => r.employee_id === emp.id)
+                const formsCount = empRequests.filter((r) => r.attachment_url).length
                 return (
                   <tr key={emp.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-3">
@@ -247,18 +255,18 @@ export function LeaveAdminDashboard({ requests: initialRequests, balances: initi
                       </div>
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-500 capitalize whitespace-nowrap">{emp.role.replace('_', ' ')}</td>
-                    <td className="px-4 py-3 text-xs text-slate-700">{bal.total_days} days</td>
+                    <td className="px-4 py-3 text-xs text-slate-700">{bal.total_days}d</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-slate-700">{bal.days_taken}</span>
-                        <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div className="w-14 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                           <div className="h-full rounded-full bg-blue-500" style={{ width: `${Math.min(100, (bal.days_taken / bal.total_days) * 100)}%` }} />
                         </div>
                       </div>
                     </td>
                     <td className="px-4 py-3">
                       <span className={cn('text-xs font-semibold', remaining <= 5 ? 'text-red-600' : remaining <= 10 ? 'text-amber-600' : 'text-green-600')}>
-                        {remaining} days
+                        {remaining}d
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -267,22 +275,65 @@ export function LeaveAdminDashboard({ requests: initialRequests, balances: initi
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      {hasPending ? (
-                        <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full font-medium">Pending</span>
-                      ) : (
-                        <span className="text-xs text-slate-400">—</span>
-                      )}
+                      {formsCount > 0 ? (
+                        <span className="flex items-center gap-1 text-xs text-blue-600">
+                          <Paperclip className="w-3 h-3" /> {formsCount}
+                        </span>
+                      ) : <span className="text-xs text-slate-300">—</span>}
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => setHistoryEmployee(emp)}
+                        className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-blue-600 transition-colors"
+                      >
+                        <History className="w-3.5 h-3.5" /> View
+                      </button>
                     </td>
                   </tr>
                 )
               })}
               {employees.length === 0 && (
-                <tr><td colSpan={7} className="text-center py-8 text-xs text-slate-400">No employees found.</td></tr>
+                <tr><td colSpan={8} className="text-center py-8 text-xs text-slate-400">No employees found.</td></tr>
               )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* ── Employee History Modal ── */}
+      <Modal
+        open={!!historyEmployee}
+        onClose={() => setHistoryEmployee(null)}
+        title={`Leave History — ${historyEmployee?.name ?? ''}`}
+        size="lg"
+      >
+        <div className="p-5 space-y-3 overflow-y-auto max-h-[60vh]">
+          {historyRequests.length === 0 ? (
+            <p className="text-sm text-slate-400 text-center py-8">No leave requests on record.</p>
+          ) : (
+            historyRequests.map((r) => (
+              <div key={r.id} className="flex flex-wrap items-start gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                <div className="flex-1 min-w-0 space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', LEAVE_COLOR[r.leave_type])}>{r.leave_type}</span>
+                    <span className={cn('text-xs px-2 py-0.5 rounded-full font-medium', STATUS_STYLE[r.status])}>{r.status}</span>
+                    <span className="text-xs text-slate-500">
+                      {format(new Date(r.start_date), 'MMM d')} – {format(new Date(r.end_date), 'MMM d, yyyy')}
+                      {' · '}{r.days_requested} day{r.days_requested !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  {r.reason && <p className="text-xs text-slate-600">{r.reason}</p>}
+                  {r.admin_note && <p className="text-xs text-slate-400 italic">Admin note: {r.admin_note}</p>}
+                  <AttachmentLink url={r.attachment_url} name={r.attachment_name} />
+                </div>
+                <span className="text-xs text-slate-400 whitespace-nowrap">
+                  {format(new Date(r.created_at), 'MMM d, yyyy')}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+      </Modal>
     </div>
   )
 }

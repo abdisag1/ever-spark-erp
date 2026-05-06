@@ -152,6 +152,8 @@ export interface LeaveRequest {
   status: LeaveStatus
   approved_by: string | null
   admin_note: string | null
+  attachment_url: string | null
+  attachment_name: string | null
   created_at: string
   updated_at: string
   employee?: Profile
