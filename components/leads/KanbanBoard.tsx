@@ -206,7 +206,7 @@ export function KanbanBoard({ initialLeads, initialContactLogs }: KanbanBoardPro
   return (
     <>
       {/* Toolbar */}
-      <div className="flex items-center justify-between mb-4 gap-3">
+      <div className="flex flex-wrap items-center justify-between mb-4 gap-2">
         <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
           <button
             onClick={() => setView('kanban')}

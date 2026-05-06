@@ -178,6 +178,28 @@ body {
 [data-theme="dark"] input::placeholder,
 [data-theme="dark"] textarea::placeholder { color: #475569; }
 
+/* ── Mobile optimisations ─────────────────────────────────────────────────── */
+
+/* Prevent iOS zoom on input focus (font-size must be >= 16px) */
+@media (max-width: 768px) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}
+
+/* Minimum tap target size for all interactive elements */
+@media (max-width: 1024px) {
+  button, a[role="button"] {
+    min-height: 40px;
+  }
+}
+
+/* Better text sizing on mobile */
+@media (max-width: 640px) {
+  .text-2xl { font-size: 1.375rem; }
+  .text-xl  { font-size: 1.125rem; }
+}
+
 /* ── Kanban scrollbar ─────────────────────────────────────────────────────── */
 .kanban-scroll::-webkit-scrollbar        { height: 6px; }
 .kanban-scroll::-webkit-scrollbar-track  { background: var(--card-border, #f1f5f9); }

@@ -13,7 +13,7 @@ interface ModalProps {
   size?: 'sm' | 'md' | 'lg'
 }
 
-const widths = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl' }
+const widths = { sm: 'sm:max-w-sm', md: 'sm:max-w-lg', lg: 'sm:max-w-2xl' }
 
 export function Modal({ open, onClose, title, children, size = 'md' }: ModalProps) {
   useEffect(() => {
@@ -27,7 +27,7 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
   return (
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -40,7 +40,7 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 8 }}
             transition={{ duration: 0.15 }}
-            className={cn('relative w-full bg-white rounded-xl shadow-xl overflow-hidden', widths[size])}
+            className={cn('relative w-full bg-white rounded-t-2xl sm:rounded-xl shadow-xl overflow-hidden', widths[size])}
           >
             {title && (
               <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">

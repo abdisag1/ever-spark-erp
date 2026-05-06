@@ -24,7 +24,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
       <div className="flex h-screen overflow-hidden" style={{ background: 'var(--background)' }}>
         <Sidebar userName={userName} userRole={userRole} userId={user.id} />
         <main className="flex-1 overflow-y-auto">
-          <div className="p-6 max-w-7xl mx-auto">
+          {/* Spacer for mobile top bar */}
+          <div className="h-14 lg:hidden" />
+          <div className="p-4 lg:p-6 max-w-7xl mx-auto">
             {children}
           </div>
         </main>

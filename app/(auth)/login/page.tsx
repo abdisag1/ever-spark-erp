@@ -47,8 +47,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="w-full max-w-md px-4">
-      <div className="bg-white rounded-2xl shadow-xl p-8">
+    <div className="w-full max-w-md">
+      <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8">
         {/* Logo */}
         <div className="flex items-center gap-3 mb-8">
           <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0" style={{ background: '#1b4332' }}>
