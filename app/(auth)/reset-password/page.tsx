@@ -1,65 +1,46 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { CheckCircle2, Lock } from 'lucide-react'
+import { Suspense } from 'react'
 
-export default function ResetPasswordPage() {
-  const router   = useRouter()
-  const supabase = createClient()
+function ResetPasswordContent() {
+  const router       = useRouter()
+  const searchParams = useSearchParams()
+  const supabase     = createClient()
 
-  const [ready,    setReady]    = useState(false)   // session from recovery token is set
-  const [invalid,  setInvalid]  = useState(false)   // token missing / expired
+  const [ready,    setReady]    = useState(false)
+  const [invalid,  setInvalid]  = useState(false)
   const [success,  setSuccess]  = useState(false)
   const [loading,  setLoading]  = useState(false)
   const [password, setPassword] = useState('')
   const [confirm,  setConfirm]  = useState('')
 
   useEffect(() => {
-    let cleanup: (() => void) | null = null
-
-    async function init() {
-      // ── PKCE flow: link arrives as /reset-password?code=xxx ──────────────
-      const params = new URLSearchParams(window.location.search)
-      const code   = params.get('code')
-
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code)
-        if (error) {
-          console.error('Code exchange error:', error.message)
-          setInvalid(true)
-        } else {
-          // Remove the code from the URL so refreshing doesn't re-exchange
-          window.history.replaceState({}, '', '/reset-password')
-          setReady(true)
-        }
-        return
-      }
-
-      // ── Implicit / hash flow: #access_token=...&type=recovery ────────────
-      if (window.location.hash.includes('type=recovery')) {
-        const { data } = supabase.auth.onAuthStateChange((event) => {
-          if (event === 'PASSWORD_RECOVERY') {
-            window.history.replaceState({}, '', '/reset-password')
-            setReady(true)
-          }
-        })
-        cleanup = () => data.subscription.unsubscribe()
-        // Give it 6 s before declaring invalid
-        const t = setTimeout(() => setReady((r) => { if (!r) setInvalid(true); return r }), 6000)
-        cleanup = () => { data.subscription.unsubscribe(); clearTimeout(t) }
-        return
-      }
-
-      // ── No token in URL at all ───────────────────────────────────────────
+    // If the callback route flagged an error, show expired immediately
+    if (searchParams.get('error') === 'expired') {
       setInvalid(true)
+      return
     }
 
-    init()
-    return () => cleanup?.()
-  }, [])
+    // The /api/auth/callback route already exchanged the code and set cookies.
+    // Just verify the session exists here.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setReady(true)
+      } else {
+        // No session — wait briefly for auth state to propagate, then give up
+        const t = setTimeout(() => setInvalid(true), 2000)
+        const { data } = supabase.auth.onAuthStateChange((event, s) => {
+          if (s) { clearTimeout(t); setReady(true) }
+        })
+        return () => { data.subscription.unsubscribe(); clearTimeout(t) }
+      }
+    })
+  }, [searchParams])
 
   async function handleReset(e: React.FormEvent) {
     e.preventDefault()
@@ -106,7 +87,7 @@ export default function ResetPasswordPage() {
           </div>
         )}
 
-        {/* Invalid / expired link */}
+        {/* Invalid / expired */}
         {!success && invalid && (
           <div className="text-center py-4">
             <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
@@ -114,7 +95,7 @@ export default function ResetPasswordPage() {
             </div>
             <h2 className="text-lg font-bold text-slate-900 mb-2">Link expired</h2>
             <p className="text-sm text-slate-500 mb-6">
-              This password reset link has expired or is invalid. Please request a new one.
+              This password reset link has expired or already been used. Please request a new one.
             </p>
             <button onClick={() => router.push('/login')} className="text-sm text-blue-600 font-medium hover:underline">
               Back to sign in
@@ -122,7 +103,7 @@ export default function ResetPasswordPage() {
           </div>
         )}
 
-        {/* Loading / waiting for token */}
+        {/* Loading */}
         {!success && !invalid && !ready && (
           <div className="text-center py-8">
             <div className="w-8 h-8 border-2 border-slate-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4" />
@@ -139,28 +120,15 @@ export default function ResetPasswordPage() {
             <form onSubmit={handleReset} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">New password</label>
-                <input
-                  type="password"
-                  required
-                  minLength={6}
-                  value={password}
+                <input type="password" required minLength={6} value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="At least 6 characters"
-                  className={inputCls}
-                  autoFocus
-                />
+                  placeholder="At least 6 characters" className={inputCls} autoFocus />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Confirm new password</label>
-                <input
-                  type="password"
-                  required
-                  minLength={6}
-                  value={confirm}
+                <label className="block text-sm font-medium text-slate-700 mb-1">Confirm password</label>
+                <input type="password" required minLength={6} value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
-                  placeholder="Same password again"
-                  className={inputCls}
-                />
+                  placeholder="Same password again" className={inputCls} />
               </div>
 
               {password && confirm && password !== confirm && (
@@ -180,5 +148,20 @@ export default function ResetPasswordPage() {
         )}
       </div>
     </div>
+  )
+}
+
+// useSearchParams requires Suspense in Next.js App Router
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={
+      <div className="w-full max-w-md">
+        <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
+          <div className="w-8 h-8 border-2 border-slate-200 border-t-blue-600 rounded-full animate-spin mx-auto" />
+        </div>
+      </div>
+    }>
+      <ResetPasswordContent />
+    </Suspense>
   )
 }

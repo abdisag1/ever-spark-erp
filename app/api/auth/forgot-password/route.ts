@@ -32,11 +32,13 @@ export async function POST(request: NextRequest) {
   )
 
   // Generate the password reset link using the Admin API
+  // redirectTo points to the server-side callback which exchanges the code,
+  // sets the session in cookies, then redirects to /reset-password
   const { data, error } = await admin.auth.admin.generateLink({
     type: 'recovery',
     email,
     options: {
-      redirectTo: `${appUrl}/reset-password`,
+      redirectTo: `${appUrl}/api/auth/callback?next=/reset-password`,
     },
   })
 
