@@ -16,8 +16,15 @@ function createTransporter() {
 }
 
 export async function POST(request: NextRequest) {
-  const { email, origin } = await request.json()
+  const { email } = await request.json()
   if (!email) return NextResponse.json({ error: 'Email is required' }, { status: 400 })
+
+  // Always use the server-side env var so the link points to production,
+  // never to whatever origin the client happens to be on (e.g. localhost).
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL ||           // set on Vercel
+    request.headers.get('origin') ||            // fallback for local dev
+    'https://ever-spark-erp.vercel.app'         // absolute fallback
 
   const admin = createAdmin(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -29,7 +36,7 @@ export async function POST(request: NextRequest) {
     type: 'recovery',
     email,
     options: {
-      redirectTo: `${origin ?? 'https://ever-spark-erp.vercel.app'}/reset-password`,
+      redirectTo: `${appUrl}/reset-password`,
     },
   })
 
