@@ -18,22 +18,47 @@ export default function ResetPasswordPage() {
   const [confirm,  setConfirm]  = useState('')
 
   useEffect(() => {
-    // Supabase fires PASSWORD_RECOVERY when it detects the token in the URL hash
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') setReady(true)
-    })
+    let cleanup: (() => void) | null = null
 
-    // Fallback: if there's already a session (some flows set it immediately)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setReady(true)
-    })
+    async function init() {
+      // ── PKCE flow: link arrives as /reset-password?code=xxx ──────────────
+      const params = new URLSearchParams(window.location.search)
+      const code   = params.get('code')
 
-    // If no event fires after 3 s, the link is invalid / expired
-    const timer = setTimeout(() => {
-      setReady((r) => { if (!r) setInvalid(true); return r })
-    }, 3000)
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code)
+        if (error) {
+          console.error('Code exchange error:', error.message)
+          setInvalid(true)
+        } else {
+          // Remove the code from the URL so refreshing doesn't re-exchange
+          window.history.replaceState({}, '', '/reset-password')
+          setReady(true)
+        }
+        return
+      }
 
-    return () => { subscription.unsubscribe(); clearTimeout(timer) }
+      // ── Implicit / hash flow: #access_token=...&type=recovery ────────────
+      if (window.location.hash.includes('type=recovery')) {
+        const { data } = supabase.auth.onAuthStateChange((event) => {
+          if (event === 'PASSWORD_RECOVERY') {
+            window.history.replaceState({}, '', '/reset-password')
+            setReady(true)
+          }
+        })
+        cleanup = () => data.subscription.unsubscribe()
+        // Give it 6 s before declaring invalid
+        const t = setTimeout(() => setReady((r) => { if (!r) setInvalid(true); return r }), 6000)
+        cleanup = () => { data.subscription.unsubscribe(); clearTimeout(t) }
+        return
+      }
+
+      // ── No token in URL at all ───────────────────────────────────────────
+      setInvalid(true)
+    }
+
+    init()
+    return () => cleanup?.()
   }, [])
 
   async function handleReset(e: React.FormEvent) {
