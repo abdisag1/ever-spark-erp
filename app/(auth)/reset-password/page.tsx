@@ -1,11 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { CheckCircle2, Lock } from 'lucide-react'
-import { Suspense } from 'react'
 
 function ResetPasswordContent() {
   const router       = useRouter()
@@ -20,26 +19,58 @@ function ResetPasswordContent() {
   const [confirm,  setConfirm]  = useState('')
 
   useEffect(() => {
-    // If the callback route flagged an error, show expired immediately
+    // Our server-side callback flagged this link as expired
     if (searchParams.get('error') === 'expired') {
       setInvalid(true)
       return
     }
 
-    // The /api/auth/callback route already exchanged the code and set cookies.
-    // Just verify the session exists here.
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    async function init() {
+      // ── 1. Hash-based (implicit flow) ──────────────────────────────────────
+      // Supabase admin-generated OTP links often redirect as:
+      //   /reset-password#access_token=XXX&refresh_token=YYY&type=recovery
+      // The hash is client-side only — servers never see it.
+      const hash = window.location.hash
+      if (hash) {
+        const p            = new URLSearchParams(hash.replace('#', ''))
+        const accessToken  = p.get('access_token')
+        const refreshToken = p.get('refresh_token') ?? ''
+        const type         = p.get('type')
+
+        if (accessToken && type === 'recovery') {
+          const { error } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+          if (!error) {
+            window.history.replaceState({}, '', '/reset-password')
+            setReady(true)
+            return
+          }
+        }
+      }
+
+      // ── 2. Code-based (PKCE flow) ──────────────────────────────────────────
+      // Some Supabase configurations redirect with ?code=xxx
+      const code = searchParams.get('code')
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code)
+        if (!error) {
+          window.history.replaceState({}, '', '/reset-password')
+          setReady(true)
+          return
+        }
+      }
+
+      // ── 3. Session already established (e.g. page refresh) ─────────────────
+      const { data: { session } } = await supabase.auth.getSession()
       if (session) {
         setReady(true)
-      } else {
-        // No session — wait briefly for auth state to propagate, then give up
-        const t = setTimeout(() => setInvalid(true), 2000)
-        const { data } = supabase.auth.onAuthStateChange((event, s) => {
-          if (s) { clearTimeout(t); setReady(true) }
-        })
-        return () => { data.subscription.unsubscribe(); clearTimeout(t) }
+        return
       }
-    })
+
+      // ── 4. Nothing worked ──────────────────────────────────────────────────
+      setInvalid(true)
+    }
+
+    init()
   }, [searchParams])
 
   async function handleReset(e: React.FormEvent) {
@@ -103,7 +134,7 @@ function ResetPasswordContent() {
           </div>
         )}
 
-        {/* Loading */}
+        {/* Loading / verifying */}
         {!success && !invalid && !ready && (
           <div className="text-center py-8">
             <div className="w-8 h-8 border-2 border-slate-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4" />
@@ -151,7 +182,6 @@ function ResetPasswordContent() {
   )
 }
 
-// useSearchParams requires Suspense in Next.js App Router
 export default function ResetPasswordPage() {
   return (
     <Suspense fallback={

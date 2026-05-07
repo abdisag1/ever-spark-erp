@@ -31,14 +31,14 @@ export async function POST(request: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  // Generate the password reset link using the Admin API
-  // redirectTo points to the server-side callback which exchanges the code,
-  // sets the session in cookies, then redirects to /reset-password
+  // Point directly at the client-side reset page.
+  // Supabase may redirect with either ?code=xxx OR #access_token=xxx in the URL.
+  // Both are handled client-side (hashes are invisible to server routes).
   const { data, error } = await admin.auth.admin.generateLink({
     type: 'recovery',
     email,
     options: {
-      redirectTo: `${appUrl}/api/auth/callback?next=/reset-password`,
+      redirectTo: `${appUrl}/reset-password`,
     },
   })
 
