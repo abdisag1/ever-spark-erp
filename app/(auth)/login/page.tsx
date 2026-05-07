@@ -42,11 +42,18 @@ export default function LoginPage() {
       else { toast.success('Account created! Check your email to confirm.'); setMode('login') }
 
     } else {
-      // Forgot password — send reset link pointing to the current origin
-      const redirectTo = `${window.location.origin}/reset-password`
-      const { error } = await supabase.auth.resetPasswordForEmail(form.email, { redirectTo })
-      if (error) toast.error(error.message)
-      else setForgotSent(true)
+      // Use our own Gmail-powered endpoint — bypasses Supabase's rate-limited SMTP
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: form.email, origin: window.location.origin }),
+      })
+      if (!res.ok) {
+        const b = await res.json().catch(() => ({}))
+        toast.error(b?.error ?? 'Failed to send reset email')
+      } else {
+        setForgotSent(true)
+      }
     }
 
     setLoading(false)
