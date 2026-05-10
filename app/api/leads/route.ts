@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
 
   const { data, error } = await supabase
     .from('leads')
-    .insert({ name, organization, email, phone, source, funnel_status: funnel_status ?? 'lead', assigned_to, notes })
+    .insert({ name, organization, email, phone, source, funnel_status: funnel_status ?? 'lead', assigned_to, notes, created_by: user.id })
     .select()
     .single()
 

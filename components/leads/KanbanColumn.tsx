@@ -33,6 +33,7 @@ interface KanbanColumnProps {
   label: string
   leads: Lead[]
   contactLogs: Map<string, ContactLog[]>
+  canEdit: (lead: Lead) => boolean
   onAdd: (status: FunnelStatus) => void
   onEdit: (lead: Lead) => void
   onDelete: (id: string) => void
@@ -40,7 +41,7 @@ interface KanbanColumnProps {
   onViewHistory: (lead: Lead) => void
 }
 
-export function KanbanColumn({ status, label, leads, contactLogs, onAdd, onEdit, onDelete, onLogContact, onViewHistory }: KanbanColumnProps) {
+export function KanbanColumn({ status, label, leads, contactLogs, canEdit, onAdd, onEdit, onDelete, onLogContact, onViewHistory }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: status })
 
   return (
@@ -73,6 +74,7 @@ export function KanbanColumn({ status, label, leads, contactLogs, onAdd, onEdit,
               key={lead.id}
               lead={lead}
               contactLogs={contactLogs.get(lead.id) ?? []}
+              canEdit={canEdit(lead)}
               onEdit={onEdit}
               onDelete={onDelete}
               onLogContact={onLogContact}

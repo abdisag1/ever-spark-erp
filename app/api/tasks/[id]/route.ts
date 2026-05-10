@@ -25,12 +25,18 @@ export async function PATCH(request: NextRequest, ctx: RouteContext<'/api/tasks/
   const { id } = await ctx.params
   const body = await request.json()
 
-  // Fetch previous assignee to detect reassignment
+  // Fetch previous state — check ownership and detect reassignment
   const { data: prev } = await supabase
     .from('tasks')
-    .select('assignee_id, title, due_date')
+    .select('assignee_id, title, due_date, created_by')
     .eq('id', id)
     .single()
+
+  // Non-admins can only update tasks they created (null created_by = legacy, allow)
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (profile?.role !== 'admin' && prev?.created_by && prev.created_by !== user.id) {
+    return NextResponse.json({ error: 'You can only edit tasks you created' }, { status: 403 })
+  }
 
   const { data, error } = await supabase
     .from('tasks')
@@ -64,6 +70,16 @@ export async function DELETE(_req: NextRequest, ctx: RouteContext<'/api/tasks/[i
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await ctx.params
+
+  // Check ownership
+  const [{ data: task }, { data: profile }] = await Promise.all([
+    supabase.from('tasks').select('created_by').eq('id', id).single(),
+    supabase.from('profiles').select('role').eq('id', user.id).single(),
+  ])
+  if (profile?.role !== 'admin' && task?.created_by && task.created_by !== user.id) {
+    return NextResponse.json({ error: 'You can only delete tasks you created' }, { status: 403 })
+  }
+
   const { error } = await supabase.from('tasks').delete().eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ success: true })

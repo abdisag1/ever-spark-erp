@@ -49,7 +49,10 @@ export default async function TasksPage() {
     milestones = (data as Milestone[]) ?? []
   }
 
-  const { data: profiles } = await supabase.from('profiles').select('id, name, role').order('name')
+  const [{ data: profiles }, { data: selfProfile }] = await Promise.all([
+    supabase.from('profiles').select('id, name, role').order('name'),
+    supabase.from('profiles').select('role').eq('id', user!.id).single(),
+  ])
 
   return (
     <div>
@@ -63,6 +66,7 @@ export default async function TasksPage() {
         milestones={milestones}
         profiles={(profiles as Profile[]) ?? []}
         currentUserId={user?.id ?? ''}
+        isAdmin={selfProfile?.role === 'admin'}
       />
     </div>
   )

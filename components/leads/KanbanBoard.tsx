@@ -73,9 +73,11 @@ function downloadCSV(leads: Lead[], logsMap: Map<string, ContactLog[]>) {
 interface KanbanBoardProps {
   initialLeads: Lead[]
   initialContactLogs: ContactLog[]
+  currentUserId: string
+  isAdmin: boolean
 }
 
-export function KanbanBoard({ initialLeads, initialContactLogs }: KanbanBoardProps) {
+export function KanbanBoard({ initialLeads, initialContactLogs, currentUserId, isAdmin }: KanbanBoardProps) {
   const [leads, setLeads] = useState<Lead[]>(initialLeads)
   const [logsMap, setLogsMap] = useState<Map<string, ContactLog[]>>(() => buildMap(initialContactLogs))
   const [view, setView] = useState<'kanban' | 'list'>('kanban')
@@ -203,6 +205,13 @@ export function KanbanBoard({ initialLeads, initialContactLogs }: KanbanBoardPro
     setFormOpen(true)
   }
 
+  /** True if the current user can edit/delete this lead */
+  function canEdit(lead: Lead): boolean {
+    if (isAdmin) return true
+    if (!lead.created_by) return true // legacy lead with no creator
+    return lead.created_by === currentUserId
+  }
+
   return (
     <>
       {/* Toolbar */}
@@ -261,6 +270,7 @@ export function KanbanBoard({ initialLeads, initialContactLogs }: KanbanBoardPro
                 label={label}
                 leads={leadsForStatus(status)}
                 contactLogs={logsMap}
+                canEdit={canEdit}
                 onAdd={openAdd}
                 onEdit={openEdit}
                 onDelete={handleDelete}
@@ -278,6 +288,7 @@ export function KanbanBoard({ initialLeads, initialContactLogs }: KanbanBoardPro
         <LeadListView
           leads={leads}
           contactLogs={logsMap}
+          canEdit={canEdit}
           onEdit={openEdit}
           onDelete={handleDelete}
           onLogContact={setContactModalLead}

@@ -30,9 +30,10 @@ const COLUMNS: { status: TaskStatus; label: string; color: string; header: strin
   { status: 'done',        label: 'Done',        color: 'border-green-400',  header: 'bg-green-50 text-green-700',   dot: 'bg-green-400' },
 ]
 
-function Column({ status, label, color, header, dot, tasks, subtaskCounts, completedSubtaskCounts, onAdd, onEdit, onDelete, onView }: {
+function Column({ status, label, color, header, dot, tasks, subtaskCounts, completedSubtaskCounts, canEdit, onAdd, onEdit, onDelete, onView }: {
   status: TaskStatus; label: string; color: string; header: string; dot: string
   tasks: Task[]; subtaskCounts: Map<string, number>; completedSubtaskCounts: Map<string, number>
+  canEdit: (t: Task) => boolean
   onAdd: () => void; onEdit: (t: Task) => void; onDelete: (id: string) => void; onView: (t: Task) => void
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status })
@@ -51,7 +52,7 @@ function Column({ status, label, color, header, dot, tasks, subtaskCounts, compl
       <div ref={setNodeRef} className="flex-1 p-2 space-y-2 min-h-[200px] overflow-y-auto">
         <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
           {tasks.map((t) => (
-            <TaskCard key={t.id} task={t} subtaskCount={subtaskCounts.get(t.id) ?? 0} completedSubtaskCount={completedSubtaskCounts.get(t.id) ?? 0} onEdit={onEdit} onDelete={onDelete} onClick={onView} />
+            <TaskCard key={t.id} task={t} subtaskCount={subtaskCounts.get(t.id) ?? 0} completedSubtaskCount={completedSubtaskCounts.get(t.id) ?? 0} canEdit={canEdit(t)} onEdit={onEdit} onDelete={onDelete} onClick={onView} />
           ))}
         </SortableContext>
         {tasks.length === 0 && (
@@ -192,9 +193,10 @@ interface TaskBoardProps {
   milestones: Milestone[]
   profiles: Profile[]
   currentUserId: string
+  isAdmin: boolean
 }
 
-export function TaskBoard({ initialTasks, projects: ip, milestones: im, profiles, currentUserId }: TaskBoardProps) {
+export function TaskBoard({ initialTasks, projects: ip, milestones: im, profiles, currentUserId, isAdmin }: TaskBoardProps) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
   const [projects, setProjects] = useState<Project[]>(ip)
   const [milestones, setMilestones] = useState<Milestone[]>(im)
@@ -303,6 +305,13 @@ export function TaskBoard({ initialTasks, projects: ip, milestones: im, profiles
     if (!res.ok) { toast.error('Failed to delete task'); return }
     setTasks((prev) => prev.filter((t) => t.id !== id && t.parent_task_id !== id))
     toast.success('Task deleted')
+  }
+
+  /** True if the current user can edit/delete this task */
+  function canEdit(task: Task): boolean {
+    if (isAdmin) return true
+    if (!task.created_by) return true // legacy task with no creator
+    return task.created_by === currentUserId
   }
 
   function openNew(status: TaskStatus, parentId: string | null = null) {
@@ -451,6 +460,7 @@ export function TaskBoard({ initialTasks, projects: ip, milestones: im, profiles
                 tasks={rootTasks.filter((t) => t.status === col.status)}
                 subtaskCounts={subtaskCounts}
                 completedSubtaskCounts={completedSubtaskCounts}
+                canEdit={canEdit}
                 onAdd={() => openNew(col.status)}
                 onEdit={openEdit}
                 onDelete={handleDelete}
@@ -479,6 +489,7 @@ export function TaskBoard({ initialTasks, projects: ip, milestones: im, profiles
           milestones={milestones}
           profiles={profiles}
           currentUserId={currentUserId}
+          canEdit={canEdit}
           onEdit={openEdit}
           onDelete={handleDelete}
         />

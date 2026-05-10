@@ -24,11 +24,12 @@ interface TaskTableViewProps {
   milestones: Milestone[]
   profiles: Profile[]
   currentUserId: string
+  canEdit: (task: Task) => boolean
   onEdit: (task: Task) => void
   onDelete: (id: string) => void
 }
 
-export function TaskTableView({ tasks, projects, milestones, profiles, currentUserId, onEdit, onDelete }: TaskTableViewProps) {
+export function TaskTableView({ tasks, projects, milestones, profiles, currentUserId, canEdit, onEdit, onDelete }: TaskTableViewProps) {
   const [filterProject, setFilterProject] = useState('')
   const [filterMilestone, setFilterMilestone] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
@@ -250,9 +251,11 @@ export function TaskTableView({ tasks, projects, milestones, profiles, currentUs
                       )}
                     </td>
 
-                    {/* Actions */}
+                    {/* Actions — only shown if user can edit this task */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                        {canEdit(task) && (
+                          <>
                         <button
                           onClick={() => onEdit(task)}
                           title="Edit"
@@ -267,6 +270,8 @@ export function TaskTableView({ tasks, projects, milestones, profiles, currentUs
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>

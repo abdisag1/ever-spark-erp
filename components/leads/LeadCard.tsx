@@ -29,13 +29,14 @@ const SENTIMENT_LABEL: Record<string, string> = {
 interface LeadCardProps {
   lead: Lead
   contactLogs: ContactLog[]
+  canEdit: boolean
   onEdit: (lead: Lead) => void
   onDelete: (id: string) => void
   onLogContact: (lead: Lead) => void
   onViewHistory: (lead: Lead) => void
 }
 
-export function LeadCard({ lead, contactLogs, onEdit, onDelete, onLogContact, onViewHistory }: LeadCardProps) {
+export function LeadCard({ lead, contactLogs, canEdit, onEdit, onDelete, onLogContact, onViewHistory }: LeadCardProps) {
   const [menuOpen, setMenuOpen] = useState(false)
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: lead.id })
@@ -101,21 +102,25 @@ export function LeadCard({ lead, contactLogs, onEdit, onDelete, onLogContact, on
               >
                 <History className="w-3 h-3" /> View History
               </button>
-              <div className="my-1 border-t border-slate-100" />
-              <button
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={() => { onEdit(lead); setMenuOpen(false) }}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50"
-              >
-                <Pencil className="w-3 h-3" /> Edit
-              </button>
-              <button
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={() => { onDelete(lead.id); setMenuOpen(false) }}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
-              >
-                <Trash2 className="w-3 h-3" /> Delete
-              </button>
+              {canEdit && (
+                <>
+                  <div className="my-1 border-t border-slate-100" />
+                  <button
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={() => { onEdit(lead); setMenuOpen(false) }}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50"
+                  >
+                    <Pencil className="w-3 h-3" /> Edit
+                  </button>
+                  <button
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={() => { onDelete(lead.id); setMenuOpen(false) }}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
+                  >
+                    <Trash2 className="w-3 h-3" /> Delete
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>

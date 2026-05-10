@@ -5,8 +5,9 @@ import type { Lead, ContactLog } from '@/types'
 
 export default async function LeadsPage() {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
 
-  const [{ data: leads }, { data: contactLogs }] = await Promise.all([
+  const [{ data: leads }, { data: contactLogs }, { data: profile }] = await Promise.all([
     supabase
       .from('leads')
       .select('*, assignee:profiles!leads_assigned_to_fkey(id, name, role)')
@@ -16,6 +17,7 @@ export default async function LeadsPage() {
       .from('contact_logs')
       .select('*')
       .order('contacted_at', { ascending: true }),
+    supabase.from('profiles').select('role').eq('id', user!.id).single(),
   ])
 
   return (
@@ -27,6 +29,8 @@ export default async function LeadsPage() {
       <KanbanBoard
         initialLeads={(leads as Lead[]) ?? []}
         initialContactLogs={(contactLogs as ContactLog[]) ?? []}
+        currentUserId={user!.id}
+        isAdmin={profile?.role === 'admin'}
       />
     </div>
   )

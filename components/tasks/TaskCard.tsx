@@ -13,6 +13,7 @@ interface TaskCardProps {
   task: Task
   subtaskCount: number
   completedSubtaskCount: number
+  canEdit: boolean
   onEdit: (task: Task) => void
   onDelete: (id: string) => void
   onClick: (task: Task) => void
@@ -22,7 +23,7 @@ function formatShortDate(d: string) {
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-export function TaskCard({ task, subtaskCount, completedSubtaskCount, onEdit, onDelete, onClick }: TaskCardProps) {
+export function TaskCard({ task, subtaskCount, completedSubtaskCount, canEdit, onEdit, onDelete, onClick }: TaskCardProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id })
 
@@ -70,7 +71,7 @@ export function TaskCard({ task, subtaskCount, completedSubtaskCount, onEdit, on
           >
             <MoreVertical className="w-3.5 h-3.5" />
           </button>
-          {menuOpen && (
+          {menuOpen && canEdit && (
             <div className="absolute right-0 top-6 z-10 bg-white border border-slate-200 rounded-lg shadow-lg py-1 w-32">
               <button onPointerDown={(e) => e.stopPropagation()} onClick={() => { onEdit(task); setMenuOpen(false) }} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50">
                 <Pencil className="w-3 h-3" /> Edit

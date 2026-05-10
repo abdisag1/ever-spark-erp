@@ -22,6 +22,7 @@ export interface Lead {
   assigned_to: string | null
   notes: string | null
   position: number
+  created_by: string | null
   created_at: string
   updated_at: string
   assignee?: Profile
@@ -65,6 +66,7 @@ export interface Task {
   project_id: string | null
   milestone_id: string | null
   parent_task_id: string | null
+  created_by: string | null
   created_at: string
   updated_at: string
   assignee?: Profile

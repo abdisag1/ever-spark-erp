@@ -59,13 +59,14 @@ function daysDiff(days: number): string {
 interface LeadListViewProps {
   leads: Lead[]
   contactLogs: Map<string, ContactLog[]>
+  canEdit: (lead: Lead) => boolean
   onEdit: (lead: Lead) => void
   onDelete: (id: string) => void
   onLogContact: (lead: Lead) => void
   onViewHistory: (lead: Lead) => void
 }
 
-export function LeadListView({ leads, contactLogs, onEdit, onDelete, onLogContact, onViewHistory }: LeadListViewProps) {
+export function LeadListView({ leads, contactLogs, canEdit, onEdit, onDelete, onLogContact, onViewHistory }: LeadListViewProps) {
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
       <div className="overflow-x-auto">
@@ -185,12 +186,16 @@ export function LeadListView({ leads, contactLogs, onEdit, onDelete, onLogContac
                       <button onClick={() => onViewHistory(lead)} title="View history" className="p-1.5 rounded hover:bg-slate-100 text-slate-500 transition-colors">
                         <History className="w-3.5 h-3.5" />
                       </button>
-                      <button onClick={() => onEdit(lead)} title="Edit" className="p-1.5 rounded hover:bg-slate-100 text-slate-500 transition-colors">
-                        <Pencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button onClick={() => onDelete(lead.id)} title="Delete" className="p-1.5 rounded hover:bg-red-50 text-red-500 transition-colors">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      {canEdit(lead) && (
+                        <>
+                          <button onClick={() => onEdit(lead)} title="Edit" className="p-1.5 rounded hover:bg-slate-100 text-slate-500 transition-colors">
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button onClick={() => onDelete(lead.id)} title="Delete" className="p-1.5 rounded hover:bg-red-50 text-red-500 transition-colors">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>

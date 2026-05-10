@@ -66,6 +66,7 @@ export async function POST(request: NextRequest) {
       project_id: project_id || null,
       milestone_id: milestone_id || null,
       parent_task_id: parent_task_id || null,
+      created_by: user.id,
     })
     .select(FULL_SELECT)
     .single()
