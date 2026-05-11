@@ -1,14 +1,28 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 
+async function checkOwnership(supabase: Awaited<ReturnType<typeof createClient>>, userId: string, milestoneId: string) {
+  const [{ data: profile }, { data: milestone }] = await Promise.all([
+    supabase.from('profiles').select('role').eq('id', userId).single(),
+    supabase.from('milestones').select('created_by').eq('id', milestoneId).single(),
+  ])
+  if (profile?.role === 'admin') return true
+  if (!milestone?.created_by) return true  // legacy
+  return milestone.created_by === userId
+}
+
 export async function PATCH(request: NextRequest, ctx: RouteContext<'/api/milestones/[id]'>) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await ctx.params
-  const body = await request.json()
 
+  if (!await checkOwnership(supabase, user.id, id)) {
+    return NextResponse.json({ error: 'You can only edit milestones you created' }, { status: 403 })
+  }
+
+  const body = await request.json()
   const { data, error } = await supabase
     .from('milestones')
     .update(body)
@@ -26,6 +40,11 @@ export async function DELETE(_req: NextRequest, ctx: RouteContext<'/api/mileston
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await ctx.params
+
+  if (!await checkOwnership(supabase, user.id, id)) {
+    return NextResponse.json({ error: 'You can only delete milestones you created' }, { status: 403 })
+  }
+
   const { error } = await supabase.from('milestones').delete().eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ success: true })

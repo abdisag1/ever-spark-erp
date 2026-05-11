@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
 
   const { data, error } = await supabase
     .from('milestones')
-    .insert({ project_id, name, description: description || null, due_date: due_date || null })
+    .insert({ project_id, name, description: description || null, due_date: due_date || null, created_by: user.id })
     .select()
     .single()
 

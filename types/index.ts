@@ -49,6 +49,7 @@ export interface Milestone {
   description: string | null
   due_date: string | null
   status: 'pending' | 'completed'
+  created_by: string | null
   created_at: string
   project?: Project
 }

@@ -7,7 +7,7 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
 import { useDroppable } from '@dnd-kit/core'
-import { Plus, LayoutGrid, CalendarDays, List, Flag, X, FolderPlus, User } from 'lucide-react'
+import { Plus, LayoutGrid, CalendarDays, List, Flag, X, FolderPlus, User, Pencil, Trash2 } from 'lucide-react'
 import { Avatar } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -63,45 +63,61 @@ function Column({ status, label, color, header, dot, tasks, subtaskCounts, compl
   )
 }
 
-// ─── Project modal ──────────────────────────────────────────────────────────
-function ProjectModal({ open, onClose, onCreated }: {
-  open: boolean; onClose: () => void; onCreated: (p: Project) => void
+// ─── Project modal (create + edit) ──────────────────────────────────────────
+function ProjectModal({ open, onClose, editProject, onCreated, onUpdated }: {
+  open: boolean
+  onClose: () => void
+  editProject?: Project | null
+  onCreated: (p: Project) => void
+  onUpdated: (p: Project) => void
 }) {
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [color, setColor] = useState(COLORS[0])
-  const [saving, setSaving] = useState(false)
+  const isEdit = !!editProject
+  const [name,        setName]        = useState(editProject?.name ?? '')
+  const [description, setDescription] = useState(editProject?.description ?? '')
+  const [color,       setColor]       = useState(editProject?.color ?? COLORS[0])
+  const [saving,      setSaving]      = useState(false)
+
+  // Reset form when switching between create/edit
+  useState(() => {
+    setName(editProject?.name ?? '')
+    setDescription(editProject?.description ?? '')
+    setColor(editProject?.color ?? COLORS[0])
+  })
 
   async function save() {
     if (!name.trim()) return
     setSaving(true)
-    const res = await fetch('/api/projects', {
-      method: 'POST',
+    const url    = isEdit ? `/api/projects/${editProject!.id}` : '/api/projects'
+    const method = isEdit ? 'PATCH' : 'POST'
+    const res = await fetch(url, {
+      method,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: name.trim(), description: description || null, color }),
     })
     if (res.ok) {
-      onCreated(await res.json())
-      setName(''); setDescription(''); setColor(COLORS[0])
+      const saved: Project = await res.json()
+      if (isEdit) onUpdated(saved); else onCreated(saved)
       onClose()
-      toast.success('Project created')
+      toast.success(isEdit ? 'Project updated' : 'Project created')
     } else {
-      const body = await res.json().catch(() => ({}))
-      toast.error(body?.error ?? 'Failed to create project')
+      const b = await res.json().catch(() => ({}))
+      toast.error(b?.error ?? (isEdit ? 'Failed to update project' : 'Failed to create project'))
     }
     setSaving(false)
   }
 
+  const inputCls = 'w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
+
   return (
-    <Modal open={open} onClose={onClose} title="New Project" size="sm">
+    <Modal open={open} onClose={onClose} title={isEdit ? 'Edit Project' : 'New Project'} size="sm">
       <div className="p-5 space-y-4">
         <div>
           <label className="block text-xs font-medium text-slate-600 mb-1">Project name *</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Solar Installation Q3" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Solar Installation Q3" className={inputCls} />
         </div>
         <div>
           <label className="block text-xs font-medium text-slate-600 mb-1">Description</label>
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="Optional description" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="Optional description" className={`${inputCls} resize-none`} />
         </div>
         <div>
           <label className="block text-xs font-medium text-slate-600 mb-2">Color</label>
@@ -116,39 +132,52 @@ function ProjectModal({ open, onClose, onCreated }: {
         </div>
         <div className="flex justify-end gap-2 pt-1">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={save} disabled={saving || !name.trim()}>{saving ? 'Creating…' : 'Create Project'}</Button>
+          <Button onClick={save} disabled={saving || !name.trim()}>
+            {saving ? 'Saving…' : isEdit ? 'Save changes' : 'Create Project'}
+          </Button>
         </div>
       </div>
     </Modal>
   )
 }
 
-// ─── Milestone modal ─────────────────────────────────────────────────────────
-function MilestoneModal({ open, onClose, projects, onCreated }: {
-  open: boolean; onClose: () => void; projects: Project[]; onCreated: (m: Milestone) => void
+// ─── Milestone modal (create + edit) ────────────────────────────────────────
+function MilestoneModal({ open, onClose, projects, editMilestone, onCreated, onUpdated }: {
+  open: boolean
+  onClose: () => void
+  projects: Project[]
+  editMilestone?: Milestone | null
+  onCreated: (m: Milestone) => void
+  onUpdated: (m: Milestone) => void
 }) {
-  const [projectId, setProjectId] = useState('')
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [dueDate, setDueDate] = useState('')
-  const [saving, setSaving] = useState(false)
+  const isEdit = !!editMilestone
+  const [projectId,   setProjectId]   = useState(editMilestone?.project_id ?? '')
+  const [name,        setName]        = useState(editMilestone?.name ?? '')
+  const [description, setDescription] = useState(editMilestone?.description ?? '')
+  const [dueDate,     setDueDate]     = useState(editMilestone?.due_date ?? '')
+  const [saving,      setSaving]      = useState(false)
 
   async function save() {
-    if (!projectId || !name.trim()) return
+    if (!name.trim() || (!isEdit && !projectId)) return
     setSaving(true)
-    const res = await fetch('/api/milestones', {
-      method: 'POST',
+    const url    = isEdit ? `/api/milestones/${editMilestone!.id}` : '/api/milestones'
+    const method = isEdit ? 'PATCH' : 'POST'
+    const body   = isEdit
+      ? { name: name.trim(), description: description || null, due_date: dueDate || null }
+      : { project_id: projectId, name: name.trim(), description: description || null, due_date: dueDate || null }
+    const res = await fetch(url, {
+      method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ project_id: projectId, name: name.trim(), description: description || null, due_date: dueDate || null }),
+      body: JSON.stringify(body),
     })
     if (res.ok) {
-      onCreated(await res.json())
-      setProjectId(''); setName(''); setDescription(''); setDueDate('')
+      const saved: Milestone = await res.json()
+      if (isEdit) onUpdated(saved); else onCreated(saved)
       onClose()
-      toast.success('Milestone created')
+      toast.success(isEdit ? 'Milestone updated' : 'Milestone created')
     } else {
-      const body = await res.json().catch(() => ({}))
-      toast.error(body?.error ?? 'Failed to create milestone')
+      const b = await res.json().catch(() => ({}))
+      toast.error(b?.error ?? (isEdit ? 'Failed to update' : 'Failed to create milestone'))
     }
     setSaving(false)
   }
@@ -156,15 +185,17 @@ function MilestoneModal({ open, onClose, projects, onCreated }: {
   const inputCls = 'w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500'
 
   return (
-    <Modal open={open} onClose={onClose} title="New Milestone" size="sm">
+    <Modal open={open} onClose={onClose} title={isEdit ? 'Edit Milestone' : 'New Milestone'} size="sm">
       <div className="p-5 space-y-4">
-        <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">Project *</label>
-          <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={`${inputCls} bg-white`}>
-            <option value="">Select a project…</option>
-            {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
-        </div>
+        {!isEdit && (
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Project *</label>
+            <select value={projectId} onChange={(e) => setProjectId(e.target.value)} className={`${inputCls} bg-white`}>
+              <option value="">Select a project…</option>
+              {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
+        )}
         <div>
           <label className="block text-xs font-medium text-slate-600 mb-1">Milestone name *</label>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Phase 1 Complete" className={inputCls} />
@@ -179,7 +210,9 @@ function MilestoneModal({ open, onClose, projects, onCreated }: {
         </div>
         <div className="flex justify-end gap-2 pt-1">
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={save} disabled={saving || !projectId || !name.trim()}>{saving ? 'Creating…' : 'Create Milestone'}</Button>
+          <Button onClick={save} disabled={saving || !name.trim() || (!isEdit && !projectId)}>
+            {saving ? 'Saving…' : isEdit ? 'Save changes' : 'Create Milestone'}
+          </Button>
         </div>
       </div>
     </Modal>
@@ -208,8 +241,10 @@ export function TaskBoard({ initialTasks, projects: ip, milestones: im, profiles
   const [formParentId, setFormParentId] = useState<string | null>(null)
   const [editingTask, setEditingTask] = useState<Task | undefined>()
   const [viewingTask, setViewingTask] = useState<Task | null>(null)
-  const [projectModalOpen, setProjectModalOpen] = useState(false)
+  const [projectModalOpen,   setProjectModalOpen]   = useState(false)
   const [milestoneModalOpen, setMilestoneModalOpen] = useState(false)
+  const [editingProject,     setEditingProject]     = useState<Project | null>(null)
+  const [editingMilestone,   setEditingMilestone]   = useState<Milestone | null>(null)
   const [filterAssigneeId, setFilterAssigneeId] = useState<string | null>(null)
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
@@ -314,6 +349,44 @@ export function TaskBoard({ initialTasks, projects: ip, milestones: im, profiles
     return task.created_by === currentUserId
   }
 
+  function canEditProject(p: Project): boolean {
+    if (isAdmin) return true
+    if (!p.created_by) return true
+    return p.created_by === currentUserId
+  }
+
+  function canEditMilestone(m: Milestone): boolean {
+    if (isAdmin) return true
+    if (!m.created_by) return true
+    return m.created_by === currentUserId
+  }
+
+  async function handleDeleteProject(id: string) {
+    if (!confirm('Delete this project? All tasks in this project will lose their project association.')) return
+    const res = await fetch(`/api/projects/${id}`, { method: 'DELETE' })
+    if (!res.ok) {
+      const b = await res.json().catch(() => ({}))
+      toast.error(b?.error ?? 'Failed to delete project')
+      return
+    }
+    setProjects((prev) => prev.filter((p) => p.id !== id))
+    if (selectedProjectId === id) { setSelectedProjectId(null); setSelectedMilestoneId(null) }
+    toast.success('Project deleted')
+  }
+
+  async function handleDeleteMilestone(id: string) {
+    if (!confirm('Delete this milestone?')) return
+    const res = await fetch(`/api/milestones/${id}`, { method: 'DELETE' })
+    if (!res.ok) {
+      const b = await res.json().catch(() => ({}))
+      toast.error(b?.error ?? 'Failed to delete milestone')
+      return
+    }
+    setMilestones((prev) => prev.filter((m) => m.id !== id))
+    if (selectedMilestoneId === id) setSelectedMilestoneId(null)
+    toast.success('Milestone deleted')
+  }
+
   function openNew(status: TaskStatus, parentId: string | null = null) {
     setFormStatus(status); setFormParentId(parentId); setEditingTask(undefined); setFormOpen(true)
   }
@@ -377,13 +450,27 @@ export function TaskBoard({ initialTasks, projects: ip, milestones: im, profiles
             <span className="text-xs text-slate-400 font-medium">Project:</span>
             <button onClick={() => selectProject(null)} className={cn('px-2.5 py-1 text-xs rounded-full font-medium transition-colors', !selectedProjectId ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')}>All</button>
             {projects.map((p) => (
-              <button key={p.id} onClick={() => selectProject(selectedProjectId === p.id ? null : p.id)}
-                className={cn('flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full font-medium transition-colors', selectedProjectId === p.id ? 'text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')}
-                style={selectedProjectId === p.id ? { backgroundColor: p.color } : {}}
-              >
-                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: selectedProjectId === p.id ? 'rgba(255,255,255,0.7)' : p.color }} />
-                {p.name}
-              </button>
+              <div key={p.id} className="group relative flex items-center">
+                <button onClick={() => selectProject(selectedProjectId === p.id ? null : p.id)}
+                  className={cn('flex items-center gap-1.5 pl-2.5 pr-1 py-1 text-xs rounded-full font-medium transition-colors', selectedProjectId === p.id ? 'text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')}
+                  style={selectedProjectId === p.id ? { backgroundColor: p.color } : {}}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: selectedProjectId === p.id ? 'rgba(255,255,255,0.7)' : p.color }} />
+                  {p.name}
+                </button>
+                {canEditProject(p) && (
+                  <div className="hidden group-hover:flex items-center gap-0.5 ml-0.5">
+                    <button onClick={() => { setEditingProject(p); setProjectModalOpen(true) }}
+                      className="p-1 rounded-full hover:bg-slate-200 text-slate-400 hover:text-blue-600 transition-colors" title="Edit project">
+                      <Pencil className="w-3 h-3" />
+                    </button>
+                    <button onClick={() => handleDeleteProject(p.id)}
+                      className="p-1 rounded-full hover:bg-red-100 text-slate-400 hover:text-red-600 transition-colors" title="Delete project">
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+              </div>
             ))}
           </div>
 
@@ -394,11 +481,25 @@ export function TaskBoard({ initialTasks, projects: ip, milestones: im, profiles
                 <span className="text-xs text-slate-400 font-medium flex items-center gap-1"><Flag className="w-3 h-3" /> Milestone:</span>
                 <button onClick={() => setSelectedMilestoneId(null)} className={cn('px-2.5 py-1 text-xs rounded-full font-medium transition-colors', !selectedMilestoneId ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')}>All</button>
                 {projectMilestones.map((m) => (
-                  <button key={m.id} onClick={() => setSelectedMilestoneId(selectedMilestoneId === m.id ? null : m.id)}
-                    className={cn('px-2.5 py-1 text-xs rounded-full font-medium transition-colors', selectedMilestoneId === m.id ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')}
-                  >
-                    {m.name}
-                  </button>
+                  <div key={m.id} className="group relative flex items-center">
+                    <button onClick={() => setSelectedMilestoneId(selectedMilestoneId === m.id ? null : m.id)}
+                      className={cn('pl-2.5 pr-1 py-1 text-xs rounded-full font-medium transition-colors', selectedMilestoneId === m.id ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')}
+                    >
+                      {m.name}
+                    </button>
+                    {canEditMilestone(m) && (
+                      <div className="hidden group-hover:flex items-center gap-0.5 ml-0.5">
+                        <button onClick={() => { setEditingMilestone(m); setMilestoneModalOpen(true) }}
+                          className="p-1 rounded-full hover:bg-slate-200 text-slate-400 hover:text-blue-600 transition-colors" title="Edit milestone">
+                          <Pencil className="w-3 h-3" />
+                        </button>
+                        <button onClick={() => handleDeleteMilestone(m.id)}
+                          className="p-1 rounded-full hover:bg-red-100 text-slate-400 hover:text-red-600 transition-colors" title="Delete milestone">
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             </>
@@ -521,15 +622,19 @@ export function TaskBoard({ initialTasks, projects: ip, milestones: im, profiles
 
       <ProjectModal
         open={projectModalOpen}
-        onClose={() => setProjectModalOpen(false)}
+        onClose={() => { setProjectModalOpen(false); setEditingProject(null) }}
+        editProject={editingProject}
         onCreated={(p) => setProjects((prev) => [...prev, p])}
+        onUpdated={(p) => setProjects((prev) => prev.map((x) => x.id === p.id ? p : x))}
       />
 
       <MilestoneModal
         open={milestoneModalOpen}
-        onClose={() => setMilestoneModalOpen(false)}
+        onClose={() => { setMilestoneModalOpen(false); setEditingMilestone(null) }}
         projects={projects}
+        editMilestone={editingMilestone}
         onCreated={(m) => setMilestones((prev) => [...prev, m])}
+        onUpdated={(m) => setMilestones((prev) => prev.map((x) => x.id === m.id ? m : x))}
       />
     </>
   )
