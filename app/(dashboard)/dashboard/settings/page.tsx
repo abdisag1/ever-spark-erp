@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { Header } from '@/components/layout/Header'
 import { SettingsPanel } from '@/components/settings/SettingsPanel'
+import { TelegramConnect } from '@/components/settings/TelegramConnect'
 
 export default async function SettingsPage() {
   const supabase = await createClient()
@@ -22,6 +23,9 @@ export default async function SettingsPage() {
         profile={{ ...profile, email: user.email ?? '' } as never}
         isAdmin={isAdmin}
       />
+      <div className="mt-5">
+        <TelegramConnect />
+      </div>
     </div>
   )
 }
