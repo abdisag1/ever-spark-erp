@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { User, Bell, Users, X, Shield, UserCheck, Pencil, Palette } from 'lucide-react'
+import { User, Bell, Users, X, Shield, UserCheck, Pencil, Palette, Send, Check, Copy } from 'lucide-react'
 import { useTheme, THEMES } from '@/components/ThemeProvider'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -9,7 +9,7 @@ import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 
-type Tab = 'profile' | 'notifications' | 'appearance' | 'team'
+type Tab = 'profile' | 'notifications' | 'appearance' | 'telegram' | 'team'
 
 interface UserProfile {
   id: string
@@ -67,6 +67,13 @@ export function SettingsPanel({ profile, isAdmin }: SettingsPanelProps) {
   const [notifyDue, setNotifyDue] = useState(profile.notify_task_due)
   const [savingNotif, setSavingNotif] = useState(false)
 
+  // Telegram state
+  const [tgLinked, setTgLinked] = useState<boolean | null>(null)
+  const [tgCode, setTgCode] = useState<string | null>(null)
+  const [tgBusy, setTgBusy] = useState(false)
+  const [tgCopied, setTgCopied] = useState(false)
+  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME
+
   // Team state
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
   const [loadingTeam, setLoadingTeam] = useState(false)
@@ -84,6 +91,42 @@ export function SettingsPanel({ profile, isAdmin }: SettingsPanelProps) {
         .catch(() => setLoadingTeam(false))
     }
   }, [tab, isAdmin])
+
+  useEffect(() => {
+    if (tab === 'telegram' && tgLinked === null) {
+      fetch('/api/telegram/link-code')
+        .then((r) => r.json())
+        .then((d) => setTgLinked(!!d.linked))
+        .catch(() => setTgLinked(false))
+    }
+  }, [tab, tgLinked])
+
+  async function generateTgCode() {
+    setTgBusy(true)
+    const res = await fetch('/api/telegram/link-code', { method: 'POST' })
+    if (res.ok) {
+      const d = await res.json()
+      setTgCode(d.code)
+    } else {
+      toast.error('Failed to generate code')
+    }
+    setTgBusy(false)
+  }
+
+  async function disconnectTg() {
+    setTgBusy(true)
+    const res = await fetch('/api/telegram/link-code', { method: 'DELETE' })
+    if (res.ok) { setTgLinked(false); setTgCode(null); toast.success('Telegram disconnected') }
+    else toast.error('Failed to disconnect')
+    setTgBusy(false)
+  }
+
+  function copyCode() {
+    if (!tgCode) return
+    navigator.clipboard?.writeText(`/link ${tgCode}`).then(() => {
+      setTgCopied(true); setTimeout(() => setTgCopied(false), 2000)
+    }).catch(() => {})
+  }
 
   async function saveProfile() {
     if (!name.trim()) { toast.error('Name is required'); return }
@@ -181,6 +224,7 @@ export function SettingsPanel({ profile, isAdmin }: SettingsPanelProps) {
     { key: 'profile',       label: 'Profile',       icon: User },
     { key: 'notifications', label: 'Notifications',  icon: Bell },
     { key: 'appearance',    label: 'Appearance',    icon: Palette },
+    { key: 'telegram',      label: 'Telegram',      icon: Send },
     { key: 'team',          label: 'Team',           icon: Users, adminOnly: true },
   ]
 
@@ -340,6 +384,71 @@ export function SettingsPanel({ profile, isAdmin }: SettingsPanelProps) {
                 )
               })}
             </div>
+          </div>
+        )}
+
+        {/* ── Telegram tab ── */}
+        {tab === 'telegram' && (
+          <div className="bg-white rounded-xl border border-slate-200 p-6 space-y-5">
+            <div className="flex items-center gap-2">
+              <Send className="w-4 h-4 text-sky-500" />
+              <h2 className="text-sm font-semibold text-slate-900">Connect Telegram</h2>
+            </div>
+            <p className="text-xs text-slate-500">
+              Link your Telegram account to request payments, receive approval requests, and approve
+              or reject them from your phone. Your identity is always verified against this ERP account.
+            </p>
+
+            {tgLinked === null ? (
+              <p className="text-xs text-slate-400">Loading…</p>
+            ) : tgLinked ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
+                  <Check className="w-4 h-4 text-green-600" />
+                  <span className="text-sm font-medium text-green-800">Telegram connected</span>
+                </div>
+                <Button variant="destructive" onClick={disconnectTg} disabled={tgBusy}>
+                  {tgBusy ? 'Working…' : 'Disconnect'}
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {tgCode ? (
+                  <div className="space-y-3">
+                    <p className="text-xs text-slate-600">
+                      Open the finance bot {botUsername ? <>(<span className="font-medium">@{botUsername}</span>)</> : null} in
+                      Telegram and send this message. The code expires in 15 minutes.
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 px-3 py-2 bg-slate-900 text-white rounded-lg text-sm font-mono tracking-wider">
+                        /link {tgCode}
+                      </code>
+                      <button
+                        onClick={copyCode}
+                        className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-500"
+                        title="Copy"
+                      >
+                        {tgCopied ? <Check className="w-4 h-4 text-green-600" /> : <Copy className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    <button onClick={generateTgCode} disabled={tgBusy} className="text-xs text-blue-600 hover:text-blue-700">
+                      Generate a new code
+                    </button>
+                  </div>
+                ) : (
+                  <Button onClick={generateTgCode} disabled={tgBusy}>
+                    {tgBusy ? 'Generating…' : 'Generate link code'}
+                  </Button>
+                )}
+
+                <div className="text-xs text-slate-400 space-y-1 border-t border-slate-100 pt-3">
+                  <p className="font-medium text-slate-500">How it works</p>
+                  <p>1. Start a chat with the finance bot and send <code className="text-slate-600">/start</code>.</p>
+                  <p>2. Generate a code here and send <code className="text-slate-600">/link &lt;code&gt;</code> in Telegram.</p>
+                  <p>3. Use <code className="text-slate-600">/pay</code> to raise a request or approve from inline buttons.</p>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
