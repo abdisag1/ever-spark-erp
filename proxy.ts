@@ -55,6 +55,14 @@ export async function proxy(request: NextRequest) {
         profile?.role !== 'sales_marketing') {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
+
+    // Finance route — admin, finance and operations only
+    if (pathname.startsWith('/dashboard/finance') &&
+        profile?.role !== 'admin' &&
+        profile?.role !== 'finance' &&
+        profile?.role !== 'operations') {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
   }
 
   // Active authenticated users don't need the pending page

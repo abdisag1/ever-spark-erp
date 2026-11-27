@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import {
   LayoutDashboard, Users, CheckSquare, BarChart2,
   Share2, MessageSquare, Calendar, LogOut, Settings,
-  Menu, X, Umbrella,
+  Menu, X, Umbrella, Wallet,
 } from 'lucide-react'
 import { NotificationBell } from '@/components/notifications/NotificationBell'
 // NotificationBell reads from NotificationProvider context — no userId prop needed
@@ -21,6 +21,7 @@ const navItems = [
   { href: '/dashboard/social',   label: 'Social',        icon: Share2,           roles: null },
   { href: '/dashboard/sms',      label: 'Communication', icon: MessageSquare,    roles: ['admin', 'sales_marketing'] },
   { href: '/dashboard/calendar', label: 'Calendar',      icon: Calendar,         roles: null },
+  { href: '/dashboard/finance',  label: 'Finance',       icon: Wallet,           roles: ['admin', 'finance', 'operations'] },
   { href: '/dashboard/leave',    label: 'Leave',         icon: Umbrella,         roles: null },
   { href: '/dashboard/settings', label: 'Settings',      icon: Settings,         roles: null },
 ]
